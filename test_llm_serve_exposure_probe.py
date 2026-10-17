@@ -111,6 +111,78 @@ def t_scan_host_verdict_exposed():
     srv.shutdown()
 
 
+
+class _Ollama(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/api/tags":
+            body = b'{"models":[{"name":"canary-llm"}]}'
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, *a):
+        pass
+
+
+def t_ollama_detected():
+    srv = _serve(_Ollama)
+    port = srv.server_address[1]
+    f = probe_http("127.0.0.1", port)
+    assert any(x["endpoint"] == "ollama" for x in f), f
+    srv.shutdown()
+
+
+def t_evidence_mentions_unauthenticated():
+    srv = _serve(_VLLM)
+    port = srv.server_address[1]
+    f = probe_http("127.0.0.1", port)
+    assert any("unauthenticated" in x["evidence"].lower() for x in f)
+    srv.shutdown()
+
+
+def t_zmtp_greeting_shape():
+    assert ZMTP_GREETING[0:1] == b"\xff"
+    assert ZMTP_GREETING[9:10] == b"\x7f"
+    assert ZMTP_GREETING[10:12] == b"\x03\x00"  # ZMTP 3.0
+
+
+def t_scan_host_ports_recorded():
+    r = scan_host("127.0.0.1", ports=[1, 2])
+    assert r["ports_scanned"] == [1, 2]
+    assert r["host"] == "127.0.0.1"
+
+
+def t_scan_default_ports():
+    import llm_serve_exposure_probe as m
+    assert 8000 in m.DEFAULT_PORTS and 11434 in m.DEFAULT_PORTS
+
+
+def t_http_probes_have_labels():
+    import llm_serve_exposure_probe as m
+    labels = [p[0] for p in m.HTTP_PROBES]
+    assert "vllm" in labels and "triton-http" in labels
+
+
+def t_multiple_findings_same_host():
+    srv = _serve(_VLLM)
+    port = srv.server_address[1]
+    r = scan_host("127.0.0.1", ports=[port])
+    assert len(r["findings"]) >= 1
+    srv.shutdown()
+
+
+def t_zmtp_none_on_http_only():
+    srv = _serve(_VLLM)
+    port = srv.server_address[1]
+    assert probe_zmtp("127.0.0.1", port) is None
+    srv.shutdown()
+
+
 def test_all_checks():
     for name, fn in sorted(
             [(k, v) for k, v in globals().items() if k.startswith("t_")]):
