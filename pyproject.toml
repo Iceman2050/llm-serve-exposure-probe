@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-serve-exposure-probe"
+version = "1.0.0"
+description = "Probe your own infra for internet-exposed LLM-serving endpoints (vLLM, LMCache, Triton) (stdlib only)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.scripts]
+llm-serve-exposure-probe = "llm_serve_exposure_probe:main"
+
+[tool.setuptools]
+py-modules = ["llm_serve_exposure_probe"]
