@@ -1,23 +1,29 @@
 # llm-serve-exposure-probe
 
-**Your inference server may be one unauthenticated request away from RCE.**
+**CVE-2026-105192 (LMCache, Oct 2026): LLM-serving endpoints exposed to the internet with no auth.**
 
-On 2026-10-07, JFrog disclosed **CVE-2026-105192** (CVSS 9.8) in LMCache: a single ZeroMQ network message executes code as the cache user with no login — and no fixed version exists yet (THN). Operators routinely bind inference infra to routable addresses by mistake.
+Teams stand up vLLM / Ollama / LMCache for internal use and forget the port is reachable. This prober checks the common LLM-serving ports on infrastructure you own and tells you what's listening.
 
-Port scanners don't speak AI-inference protocols. This probe does:
-- **HTTP probes** — vLLM `/v1/models`, Ollama `/api/tags`, Triton `/v2/health/ready` (proves unauthenticated access, not just an open port)
-- **ZMTP greeting** — raw-socket ZeroMQ handshake detection (the LMCache attack surface)
-
-## Authorized testing ONLY
-Point this at infrastructure you own or are explicitly authorized to test. Scanning third-party hosts you don't own is unauthorized access — don't.
-
-## What it does NOT detect
-Authenticated misconfigurations, or vulnerabilities beyond unauthenticated exposure. A clean scan means "no exposed endpoints on probed ports", never a safety certification.
-
-## Usage
+## 30-second quickstart
 ```
-python -m llm_serve_exposure_probe 10.0.0.5 --ports 8000,11434,8001,5555
+python llm_serve_exposure_probe.py 10.0.4.21
 ```
+
+## Example output
+```
+{
+  "host": "127.0.0.1",
+  "ports_scanned": [8000, 11434, 8001, 8002, 5555],
+  "findings": [],
+  "verdict": "CLEAN — no exposed LLM-serving endpoints detected on probed ports",
+  "notice": "AUTHORIZED TESTING ONLY — only scan infrastructure you own or are explicitly authorized to test."
+}
+```
+
+`--ports` to customize, `--timeout` per-port (default 5s).
+
+## What it does NOT do
+A port prober, not a vulnerability scanner — it finds exposed endpoints, it doesn't exploit them. **Only scan infrastructure you own or are authorized to test.**
 
 ## Built by Ingenious AI
 
